@@ -1,12 +1,34 @@
 #!/usr/bin/env bash
 
 ### BEGIN INIT INFO
-# Provides:          synthing
-# Required-Start:    $network $remote_fs $syslog
-# Required-Stop:     $network $remote_fs $syslog
+# Provides:          msbync-launcher
+# Required-Start:    $network
+# Required-Stop:     $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 ### END INIT INFO
+
+# /*------------------------------------------------------------------------*\
+# |                                                                          |
+# |                WTFPL & DSSL apply on this material.                      |
+# |                                                                          |
+# +--------------------------------------------------------------------------+
+# |                                                                          |
+# | mbsync-launcher : A script to sync your mail accounts via mbsync.        |
+# | Copyright (C) 2017-2017 Flyounet — Tous droits réservés.                 |
+# |                                                                          |
+# | Cette œuvre est distribuée SANS AUCUNE GARANTIE hormis celle d'être      |
+# | distribuée sous les termes de la Licence Demerdez-vous («Demerden Sie    |
+# | Sich License») telle que publiée par Flyounet : soit la version 1 de     |
+# | cette licence,soit (à votre gré) toute version ultérieure.               |
+# | telle que publiée par Flyounet : soit la version 1 de cette licence,     |
+# | soit (à votre gré) toute version ultérieure.                             |
+# |                                                                          |
+# | Vous devriez avoir reçu une copie de la Licence Démerdez-vous avec cette |
+# | œuvre ; si ce n’est pas le cas, consultez :                              |
+# | <http://dssl.flyounet.net/licenses/>.                                    |
+# |                                                                          |
+# \*------------------------------------------------------------------------*/
 
 # a=0;while true; do mbsync -c ../mbsync/mbsync.conf -a ; [[ $((++a % 5)) == 0 ]] && sleep 120; done
 
@@ -94,21 +116,15 @@ _startExecution () {
 		while read channel; do
 			(
 				[[ -e "${_pidFile}.stop" ]] && return 0
-		#		date
+				[[ ! -z "${1:-}" ]] && { [[ "${1:-}" != "${channel}" ]] && continue; }
 				[[ -f "${_tmpDir}/.channel-${channel}" ]] && continue
 				:> "${_tmpDir}/.channel-${channel}"
 				echo "##################### Starting @ $(date)" >> "${_tmpDir}/log.${channel}.${_date}"
-#				( mbsync -c "${_configFile}" "${channel}" &>>"/tmp/log.${channel}.${_date}" ) &>/dev/null &
 				( mbsync -c "${_configFile}" "${channel}" &>>"/tmp/log.${channel}.${_date}" ) &
 				_mbsyncPid=${!}
-		#		date
-		#		waitToKill ${_mbsyncPid}
 				waitToKill ${_mbsyncPid} ${channel} &
 				_waiter=${!}
-		#		date 
 				wait ${_mbsyncPid}
-		#		echo removeWaiter ${_waiter}
-				
 			) &
 			_channelWait=${!}
 			sleep 1
@@ -180,7 +196,7 @@ _start () {
 	_createLockFile
 	rm -f -- "${_pidFile}.stop"
 #	_startExecution 
-	( _startExecution &>/dev/null ) &
+	( _startExecution "${1:-}" &>/dev/null ) &
 	_createLockFile "${!}"
 	sleep 2
 	_status
@@ -200,12 +216,12 @@ _channels="$(sed -e '/^[[:space:]]*Channel/!d;s/^[[:space:]]*Channel[[:space:]]*
 _argv="${1:-}"
 [[ ${#} -gt 1 ]] && { shift; _requester="${@}"; }
 case "${_argv,,}" in
-	start) _start "${_requester:=}";;
-	stop) _stop "${_requester:=}";;
+	start) _start "${_requester:-}" &>/dev/null;;
+	stop) _stop;;
 	forcestop) _force=1 _stop;;
-	info) _force=1 _status "${_requester:=}";;
-	status) _status "${_requester:=}";;
-	restart) _force=1 _stop "${_requester:=}"; sleep 2; _start "${_requester:=}";;
+	info) _force=1 _status;;
+	status) _status;;
+	restart) _force=1 _stop; sleep 2; _start "${_requester:-}" &>/dev/null;;
 	*) echo "usage: ${0} [start|status|info|stop|forcestop|restart]" >&2 ;;
 esac
 

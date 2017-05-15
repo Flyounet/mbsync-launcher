@@ -57,7 +57,7 @@ _parallelRun=0			# Could be useful if you more than one channel
 				# >1 => max concurrent channel in parallel
 _user="${USER}"			# The user which runs your mbsync
 RUN_ONCE=${RUN_ONCE:=1}		# Only run once and don't work for every time
-VERSION='0.0.1'			# Script Info
+VERSION='0.0.2'			# Script Info
 
 #
 # Exit and print message
@@ -191,6 +191,7 @@ _start () {
 }
 
 # List of account
+[[ -e "${_configFile}" ]] || die "No configuration file. Aborting..."
 _channels="$(sed -e '/^[[:space:]]*Channel/!d;s/^[[:space:]]*Channel[[:space:]]*//' "${_configFile}")"
 
 # Check if there is any channel in the config file...
@@ -211,4 +212,4 @@ esac
 
 exit 0
 
-# $Format:%cn @ %cD$ : $Id: 46fe3b0647de7136b877dec1c34202b15807db2e $
+# $Format:%cn @ %cD$ : %h $

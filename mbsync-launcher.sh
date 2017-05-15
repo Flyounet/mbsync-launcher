@@ -57,7 +57,7 @@ _parallelRun=0			# Could be useful if you more than one channel
 				# >1 => max concurrent channel in parallel
 _user="${USER}"			# The user which runs your mbsync
 RUN_ONCE=${RUN_ONCE:=1}		# Only run once and don't work for every time
-
+VERSION='0.0.1'			# Script Info
 
 #
 # Exit and print message
@@ -71,7 +71,6 @@ die () {
 # Generate a file with pid of running process
 #
 _createLockFile () {
-#	[[ ! -e "${_pidFile}" ]] && { echo -n "${$}::$(< "/proc/${$}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting...'; }
 	local _spid="${$}"
 	[[ ! -z "${1:-}" ]] && _spid="${1}"
 	printf '%s' "${_spid}::$(< "/proc/${_spid}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting...';
@@ -81,13 +80,10 @@ _createLockFile () {
 # Check if pid file is there and return 0 if running
 #
 _verifyLockFile () {
-#set -xv
 	[[ -e "${_pidFile}" && -s "${_pidFile}" ]] && {
 		local _pid="$(< "${_pidFile}")"
-#echo "${_pid} ----- ${_pid%::*} ----- $(cat "/proc/${_pid%::*}/cmdline")"
 		grep -qE "^${$}::" <<< "${_pid}" || {
 			[[ "$(cat "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] || return 1
-#			[[ "$(< "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] || return 1
 			export _runningPid="${_pid%::*}"
 			return 0
 		}
@@ -97,15 +93,9 @@ _verifyLockFile () {
 	return 1
 }
 
-#_verifyLockFile () {
-#	[[  -e "${_pidFile}" ]] && {
-#		local _pid="$(< "${_pidFile}")"
-#		grep -qE "^${$}::" "${_pidFile}" || {
-#			[[ "$(< "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] && die "Process (${_pid%::*} is currently running. Exiting..."
-#		}
-#	}
-#	_createLockFile
-#}
+#
+# Real execution
+#
 _startExecution () {
 	trap 'rm -f -- "${_pidFile}" "${_tmpDir}"/.channel-*' INT EXIT
 	while true; do
@@ -191,27 +181,20 @@ _stop () {
 # Start the process
 #
 _start () {
-#set -xv
 	_verifyLockFile && die "Process (${_runningPid}) is currently running."
 	_createLockFile
 	rm -f -- "${_pidFile}.stop"
-#	_startExecution 
 	( _startExecution "${1:-}" &>/dev/null ) &
 	_createLockFile "${!}"
 	sleep 2
 	_status
 }
 
-# Delete temp files
-##trap 'rm -f -- "${_pidFile}" "${_tmpDir}"/.channel-*' INT EXIT
-#trap 'rm -f -- "${_pidFile}" "${_tmpDir}"/.channel-*' EXIT
-
 # List of account
 _channels="$(sed -e '/^[[:space:]]*Channel/!d;s/^[[:space:]]*Channel[[:space:]]*//' "${_configFile}")"
 
 # Check if there is any channel in the config file...
 [[ -z "${_channels// 	/}" ]] && die "No channel in '${_configFile}'"
-
 
 _argv="${1:-}"
 [[ ${#} -gt 1 ]] && { shift; _requester="${@}"; }
@@ -222,68 +205,10 @@ case "${_argv,,}" in
 	info) _force=1 _status;;
 	status) _status;;
 	restart) _force=1 _stop; sleep 2; _start "${_requester:-}" &>/dev/null;;
-	*) echo "usage: ${0} [start|status|info|stop|forcestop|restart]" >&2 ;;
+	version) printf '%s\n' "${0} v${VERSION}";;
+	*) echo "usage: ${0} [start [channel-name]|status|info|stop|forcestop|restart]" >&2 ;;
 esac
 
-
-
-
-
-
-
 exit 0
-
-#
-##############################################################################
-#
-
-
-
-
-# Une putain de bonne grosse verif de PID
-# <------------ là
-# echo "$$ - $(cat /proc/$$/cmdline)"
-# _verifyLockFile
-
-#sleep 500
-#exit 0
-#[[ ! -e "${_pidFile}" ]] && { echo -n "${$}::$(< "/proc/${$}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting.'; }
-#[[ -e "${_pidFile}" ]] && {  }
-#[[ -e "/proc/${$}/cdline" ]] && 
-# SI personne on supprime tous les /tmp/.channel-*
-
-
-
-
-_maxConcurrent=0
-[[ ${_parallelMode:=0} -gt 1 ]] && { _maxConcurrent=${_parallelMode}; }
-while read channel; do
-	(
-		[[ -e "${_pidFile}.stop" ]] && return 0
-#		date
-		[[ -f "${_tmpDir}/.channel-${channel}" ]] && continue
-		:> "${_tmpDir}/.channel-${channel}"
-		echo "##################### Starting @ $(date)" >> "${_tmpDir}/log.${channel}"
-		( mbsync -c "${_configFile}" "${channel}" &>>/tmp/log.${channel} ) &
-		_mbsyncPid=${!}
-#		date
-#		waitToKill ${_mbsyncPid}
-		waitToKill ${_mbsyncPid} ${channel} &
-		_waiter=${!}
-#		date 
-		wait ${_mbsyncPid}
-#		echo removeWaiter ${_waiter}
-		
-	) &
-	_channelWait=${!}
-	sleep 1
-	[[ ${_parallelMode:=0} -eq 1 ]] && continue
-	wait ${_channelWait}
-	
-done <<< "${_channels}"
-
-exit 0
-
-
 
 # $Format:%cn @ %cD$ : $Id: 46fe3b0647de7136b877dec1c34202b15807db2e $

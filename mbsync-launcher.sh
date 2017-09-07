@@ -73,7 +73,7 @@ die () {
 _createLockFile () {
 	local _spid="${$}"
 	[[ ! -z "${1:-}" ]] && _spid="${1}"
-	printf '%s' "${_spid}::$(< "/proc/${_spid}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting...';
+	printf '%s' "${_spid}::$(sed -e 's;\x0;;g' "/proc/${_spid}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting...';
 }
 
 #
@@ -83,7 +83,7 @@ _verifyLockFile () {
 	[[ -e "${_pidFile}" && -s "${_pidFile}" ]] && {
 		local _pid="$(< "${_pidFile}")"
 		grep -qE "^${$}::" <<< "${_pid}" || {
-			[[ "$(cat "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] || return 1
+			[[ "$(sed -e 's;\x0;;g' "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] || return 1
 			export _runningPid="${_pid%::*}"
 			return 0
 		}

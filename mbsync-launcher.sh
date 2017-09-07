@@ -57,7 +57,7 @@ _parallelRun=0			# Could be useful if you more than one channel
 				# >1 => max concurrent channel in parallel
 _user="${USER}"			# The user which runs your mbsync
 RUN_ONCE=${RUN_ONCE:=1}		# Only run once and don't work for every time
-VERSION='0.0.2'			# Script Info
+VERSION='0.0.3'			# Script Info
 
 #
 # Exit and print message

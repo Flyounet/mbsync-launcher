@@ -57,7 +57,7 @@ _parallelRun=0			# Could be useful if you more than one channel
 				# >1 => max concurrent channel in parallel
 _user="${USER}"			# The user which runs your mbsync
 RUN_ONCE=${RUN_ONCE:=1}		# Only run once and don't work for every time
-VERSION='0.0.2'			# Script Info
+VERSION='0.0.3'			# Script Info
 
 #
 # Exit and print message
@@ -73,7 +73,7 @@ die () {
 _createLockFile () {
 	local _spid="${$}"
 	[[ ! -z "${1:-}" ]] && _spid="${1}"
-	printf '%s' "${_spid}::$(< "/proc/${_spid}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting...';
+	printf '%s' "${_spid}::$(sed -e 's;\x0;;g' "/proc/${_spid}/cmdline")" > "${_pidFile}" || die 'Unable to create lock. Aborting...';
 }
 
 #
@@ -83,7 +83,7 @@ _verifyLockFile () {
 	[[ -e "${_pidFile}" && -s "${_pidFile}" ]] && {
 		local _pid="$(< "${_pidFile}")"
 		grep -qE "^${$}::" <<< "${_pid}" || {
-			[[ "$(cat "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] || return 1
+			[[ "$(sed -e 's;\x0;;g' "/proc/${_pid%::*}/cmdline" 2>/dev/null)" = "${_pid##*::}" ]] || return 1
 			export _runningPid="${_pid%::*}"
 			return 0
 		}
